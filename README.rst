@@ -8,16 +8,22 @@ instance method the first time it is run and use this result on subsequent runs.
     from requests_html import HTMLSession
     import emi
 
-    easy_mock_method = emi.MethodMock(method=HTMLSession.get)
-    HTMLSession.get = easy_mock_method.mock
+    htmlsession_get = emi.MethodMock(method=HTMLSession.get)
+    HTMLSession.get = htmlsession_get.mock
 
-    # imports for the test function must be after the easy mock definitions
-    from my_module import my_boolean_method
+    def my_boolean_method(url):
+        with HTMLSession() as s:
+            r = s.get(url)  #  <-- oooohhhh, this is actually the mocked method!
+            if r.ok:
+                return True
 
-    @easy_mock_method.activate  # easy_mock_method will activate and be used instead of HTMLSession.get
+    @htmlsession_get.activate  # easy_mock_method will activate and be used instead of HTMLSession.get
     def test_my_boolean_method():
         assert my_boolean_method(url='https://google.com') is True
 
+    if __name__ == '__main__':
+        test_my_boolean_method()  # run this for the first time and s.get will reach out to the internet
+        test_my_boolean_method()  # run this again and s.get won't! it saves your response.
 
 Plans
 _____
