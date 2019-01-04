@@ -17,7 +17,7 @@ instance method the first time it is run and use this result on subsequent runs.
             if r.ok:
                 return True
 
-    @htmlsession_get.activate  # easy_mock_method will activate and be used instead of HTMLSession.get
+    @htmlsession_get.activate  # htmlsession_get will activate and be used instead of HTMLSession.get
     def test_my_boolean_method():
         assert my_boolean_method(url='https://google.com') is True
 
