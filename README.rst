@@ -32,5 +32,5 @@ There seem to be a few roadblocks while creating this...
 
 - monkey patching after importing instead of before?
 - pickling is a little tricky.  for complex objects like a requests.Response, it seems like a lot of __getstate__
-get called.  what is the order?  my example works, but I feel like I am missing something?
+    get called.  what is the order?  my example works, but I feel like I am missing something?
 - pickle security?
