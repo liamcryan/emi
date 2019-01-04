@@ -22,8 +22,8 @@ instance method the first time it is run and use this result on subsequent runs.
         assert my_boolean_method(url='https://google.com') is True
 
     if __name__ == '__main__':
-        test_my_boolean_method()  # run this for the first time and s.get will reach out to the internet
-        test_my_boolean_method()  # run this again and s.get won't! it saves your response.
+        test_my_boolean_method()  # run this for the first time and s.get will reach out to the internet and save the response
+        test_my_boolean_method()  # run this again and s.get will use the saved response!
 
 Plans
 _____
