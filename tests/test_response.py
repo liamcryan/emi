@@ -1,5 +1,8 @@
 import os
-import unittest
+# import unittest
+
+from requests import Response, PreparedRequest
+from requests.adapters import HTTPAdapter
 from requests_html import HTMLSession
 from emi.api import MethodMock
 
@@ -16,50 +19,84 @@ def get_http_response(*args, **get_kwargs):
         return r
 
 
-class TestHTMLResponses(unittest.TestCase):
-    url1 = 'https://google.com'
-    url2 = 'https://yahoo.com'
+# class TestHTMLResponsesViaHTTP(unittest.TestCase):
+#     url1 = 'https://google.com'
+#
+#     def delete(self):
+#         for _ in os.listdir(htmlsession_get.directory):
+#             if _ == '.gitkeep':
+#                 continue
+#             try:
+#                 os.remove(os.path.join(htmlsession_get.directory, _))
+#             except FileNotFoundError:
+#                 pass
+#
+#     def setUp(self):
+#         self.delete()
+#
+#     def tearDown(self):
+#         self.delete()
+#
+#     @htmlsession_get.activate
+#     def test_http_then_pickle_then_compare(self):
+#         """ test that the http response you receive is the same as (close to) the pickled response"""
+#         http_response1 = get_http_response(self.url1, verify=False)
+#         pickled_response1 = htmlsession_get.get_method_response(1, self.url1, verify=False)
+#         for attr in http_response1.__dict__:
+#             if attr == '__getstate__':
+#                 continue
+#             elif attr == 'raw':
+#                 assert pickled_response1.raw is None
+#             elif attr == 'history':
+#                 assert isinstance(pickled_response1.history[0], Response)
+#             elif attr == 'request':
+#                 assert isinstance(pickled_response1.request, PreparedRequest)
+#             elif attr == 'session':
+#                 assert isinstance(pickled_response1.session, HTMLSession)
+#             elif attr == 'connection':
+#                 assert isinstance(pickled_response1.connection, HTTPAdapter)
+#             else:
+#                 assert http_response1.__getattribute__(attr) == pickled_response1.__getattribute__(attr)
+#
+#     @htmlsession_get.activate
+#     def test_same_two_http_then_two_different_pickles(self):
+#         """ sometimes you expect different results from separate calls to the same function/args/kwargs.
+#
+#         test that multiple calls to the same function/args/kwargs provide separate pickled results.
+#         """
+#         http_response1 = get_http_response(self.url1, verify=False)
+#         http_response2 = get_http_response(self.url1, verify=False)
+#         pickled_response1 = htmlsession_get.get_method_response(1, self.url1, verify=False)
+#         pickled_response2 = htmlsession_get.get_method_response(2, self.url1, verify=False)
+#         assert http_response1.elapsed == pickled_response1.elapsed
+#         assert http_response2.elapsed == pickled_response2.elapsed
 
-    @htmlsession_get.activate
-    def test_get_saved_method_response_url1_and_url2(self):
-        """ Opens up the pickle file in the fixture folder and retrieves the
-        HTTP.get method matching the args & kwargs provided.  The pickle file
-        contains the actual response so that tests will not need HTTP calls. """
+@htmlsession_get.activate
+def test_find_the_object():
+    class A(object):
+        def __init__(self, session):
+            self.dummy1 = HTTPAdapter
+            self.session = session
+            self.dummy2 = Response
 
-        http_response1 = get_http_response(self.url1, verify=False)
-        data = {'_content': http_response1._content,
-                '_content_consumed': http_response1._content_consumed,
-                '_html': http_response1._html,
-                '_next': http_response1._next,
-                'apparent_encoding': http_response1.apparent_encoding,
-                'connection': http_response1.connection,
-                'content': http_response1.content,
-                'cookies': http_response1.cookies,
-                'elapsed': http_response1.elapsed,
-                'encoding': http_response1.encoding,
-                'headers': http_response1.headers,
-                'history': http_response1.history,
-                'html': http_response1.html,
-                'is_permanent_redirect': http_response1.is_permanent_redirect,
-                'is_redirect': http_response1.is_redirect,
-                'links': http_response1.links,
-                'next': http_response1.next,
-                'ok': http_response1.ok,
-                'raw': http_response1.raw,
-                'reason': http_response1.reason,
-                'request': http_response1.request,
-                'session': http_response1.session,
-                'status_code': http_response1.status_code,
-                'text': http_response1.text,
-                'url': http_response1.url
-                }
-        # http_response2 = get_http_response(self.url2, verify=False)
+    class B(object):
+        def __init__(self):
+            self.dummy3 = PreparedRequest
 
-        pickled_response1 = htmlsession_get.get_method_response(self.url1, verify=False)
-        for attr in data:
-            assert hasattr(pickled_response1, attr)
+    with HTMLSession() as s:
+        a = A(session=s)
+        b = B()
+        # look through a and get the object (a.session)
+        obj = htmlsession_get._find_the_object_in_f_locals(f_locals={'b': b, 'a': a})
+        # obj is s...
+        # need to make sure this is breadth first
 
-        # test asserts that the pickled response has all of the attributes but nothing about the values :(
+
+    # need to test _find_the_object
+    # provide more complex structure & make sure that _find_the_object is not too bad
+    # it does a depth search first, so that's not good...
+
 
 if __name__ == '__main__':
-    unittest.main()
+    test_find_the_object()
+    # unittest.main()
