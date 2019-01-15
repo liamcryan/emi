@@ -5,6 +5,12 @@ import pickle
 import types
 from typing import Dict, Any, Union, Generator, Optional
 
+all = ('MethodMock', 'MaxDepthExceeded')
+
+
+class MaxDepthExceeded(Exception):
+    pass
+
 
 def __getstate__(self) -> Dict:
     """ Used by pickle when pickle.dump(s) is called.
@@ -55,54 +61,63 @@ class MethodMock(object):
 
     def _get_active_test(self):
         for stack in inspect.stack():
-            func_name = stack.function
             for test in self.activated_tests:
-                if test.split('.')[-1] == func_name:
+                if test.split('.')[-1] == stack.function:
                     return test
 
-    def _find_the_object_in_f_locals(self, f_locals):
-        # is f_loc1.1? f_loc2.1? f_loc3.1?
-        # how about f_loc1.2? f_loc2.2? f_loc3.2?
-        # ...
-        for loc in f_locals:
-            try:
-                obj = self._find_the_object(_object=f_locals[loc])
-                if obj:
-                    break
-                else:
-                    continue
-            except RecursionError:
-                continue
-        else:
-            raise Exception('could not find the correct object')
+    def _find_the_object_in_f_locals_bfs(self, f_locals, max_depth=5):
+        """ Find the correct object in f_locals.
 
-    def _find_the_object(self, _object):
-        """ Find the correct object.  Look through all of the attrs object's __dict__ too (depth first).
+        The object we want looks like: obj.(self.method.__name__) == self.mock
 
-        If the object under consideration has a _method, that's good.  Then
-        check if it's the same as _mock.
+        The structure could be:
+            obj.(self.method.__name__)
+            c.(self.method.__name__)
+            ...
+            A.b.c.obj.(self.method.__name__)
 
-        :param _object: the object under consideration
-        :return: the object if it is the correct one, or None
+        Since we don't know the structure of exactly where the obj is called, we do a breadth
+        first search to find it.  BFS in this case is what I want, because we don't travel
+        down one branch before visiting other branches.  I am thinking that most objects
+        will not be heavily nested, but may have some nesting, so max_depth is set to 5.
+
+        Also, if the object is nested, it must be contained in 'container.__dict__'.  This means
+        only instance attributes wil be found.  Will not find class attributes, however could if the
+        below used 'dir(container)' instead.
+
+        :param f_locals: f_locals is frame locals.  Or a dict like {'a': a_obj, 'b': b_obj, ...}
+        :return: the object
+        :raise: MaxDepthExceeded
         """
-        try:
-            if getattr(_object, self.method.__name__) == self.mock:
-                return _object
+        class NextFLocals(object):
+            def __init__(self):
+                self.f_locals = {}
+
+            def update(self, data: Dict):
+                try:
+                    self.f_locals.update(data.__dict__)
+                except AttributeError:
+                    pass
+
+        next_f_locals = NextFLocals()
+        depth = 0
+
+        while depth <= max_depth:
+            for loc in f_locals:
+                _object = f_locals[loc]
+                try:
+                    if getattr(_object, self.method.__name__) == self.mock:
+                        return _object
+                    else:
+                        next_f_locals.update(_object)
+                except AttributeError:
+                    next_f_locals.update(_object)
             else:
-                pass
-        except AttributeError:
-            pass
+                depth += 1
+                f_locals = next_f_locals.f_locals
+                next_f_locals.f_locals = {}
 
-        try:
-            _attrs = _object.__dict__
-        except AttributeError:
-            return None
-
-        for _attr in _attrs:
-            try:
-                return self._find_the_object(_object=_object.__dict__[_attr])
-            except RecursionError:
-                continue
+        raise MaxDepthExceeded('Could not find the object with depth of {} exceeded'.format(max_depth))
 
     def mock(self, *args, **kwargs) -> Any:
         """  Replace a method with a mock instead.
@@ -117,6 +132,7 @@ class MethodMock(object):
         """
 
         self.activated_test = self._get_active_test()
+        mock_obj = self._find_the_object_in_f_locals_bfs(f_locals=inspect.currentframe().f_back.f_locals)
 
         if self.activated_test:
             self.activated_tests[self.activated_test]['mock'] += 1  # add one to the function count
@@ -125,16 +141,11 @@ class MethodMock(object):
             if pickled_results:
                 return pickled_results
 
-        last_frame = inspect.currentframe().f_back
-        f_locals = last_frame.f_locals
-        obj = self._find_the_object_in_f_locals(f_locals=f_locals)
-
-        r = self.method(obj, *args, **kwargs)
-
-        if self.activated_test:
+            r = self.method(mock_obj, *args, **kwargs)
             self.save_method_response(r, method_count, *args, **kwargs)
+            return r
 
-        return r
+        return self.method(mock_obj, *args, **kwargs)
 
     def _open_pickle(self, *args, **kwargs) -> Optional[Generator]:
         """ loading multiple objects contained in a list at once has unexpected effects
