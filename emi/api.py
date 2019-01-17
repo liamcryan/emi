@@ -152,7 +152,7 @@ class MethodMock(object):
         where some items in the list do not load correctly.  this will load each pickle.  make sure to
         close this file by iterating through all items even if you have the one you are looking for """
         try:
-            with open(os.path.join(self.directory, self.filename(*args, **kwargs)), 'rb') as f:
+            with open(os.path.join(self.directory, self.filename()), 'rb') as f:
                 while True:
                     try:
                         yield pickle.load(f)
@@ -182,7 +182,7 @@ class MethodMock(object):
         """
         _method_response.__getstate__ = types.MethodType(__getstate__, _method_response)
 
-        with open(os.path.join(self.directory, self.filename(*args, **kwargs)), 'ab') as f:
+        with open(os.path.join(self.directory, self.filename()), 'ab') as f:
             pickle.dump({self._id(method_count, *args, **kwargs): _method_response}, f)
 
     def _id(self, method_count, *args, **kwargs):
@@ -197,7 +197,7 @@ class MethodMock(object):
 
         return activated_test + method + _args + _kwargs + str(method_count)
 
-    def filename(self, *args, **kwargs):
+    def filename(self):
         """ a filename that identifies the test and mock method """
         f_name = '{}-{}.pickle'.format(self.activated_test, self.method.__qualname__)
         return f_name
