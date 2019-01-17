@@ -5,7 +5,7 @@ import pickle
 import types
 from typing import Dict, Any, Union, Generator, Optional
 
-all = ('MethodMock', 'MaxDepthExceeded')
+__all__ = ('MethodMock', 'MaxDepthExceeded')
 
 
 class MaxDepthExceeded(Exception):
