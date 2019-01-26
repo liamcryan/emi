@@ -9,5 +9,5 @@ setup(
     license='Apache License 2.0',
     author='Liam Cryan',
     author_email='cryan.liam@gmail.com',
-    description='(e)asy (m)ock(i)ng; save your *whole* object..hahahaha...asterisk'
+    description='(e)asy (m)ock(i)ng; a vcr-like way to save responses and mock tests'
 )

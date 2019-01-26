@@ -15,8 +15,7 @@ class MaxDepthExceeded(Exception):
 def __getstate__(self) -> Dict:
     """ Used by pickle when pickle.dump(s) is called.
 
-    Check to see if the attribute is pickle-able.  If not, then
-    essentially disregard it.
+    Check to see if the attribute is pickle-able.  If not, then essentially disregard it.
 
     :return: a dictionary of pickle-able objects
     """
@@ -50,7 +49,7 @@ class MethodMock(object):
         :return the same function.
         """
         self.activated_tests.update({
-            '{}.{}'.format(func.__module__, func.__qualname__): {'mock': 0, 'get': 0}})
+            '{}.{}'.format(func.__module__, func.__qualname__): {'method_count': 0}})
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -89,6 +88,7 @@ class MethodMock(object):
         :return: the object
         :raise: MaxDepthExceeded
         """
+
         class NextFLocals(object):
             def __init__(self):
                 self.f_locals = {}
@@ -126,8 +126,6 @@ class MethodMock(object):
             mock will only run if activated with a decorator
             actual method will run if there is no pickle file
 
-        :param args: args used to identify the method to be mocked
-        :param kwargs: kwargs used to identify the method to be mocked
         :return: the results of the pickle file or result of the actual method
         """
 
@@ -135,19 +133,19 @@ class MethodMock(object):
         mock_obj = self._find_the_object_in_f_locals_bfs(f_locals=inspect.currentframe().f_back.f_locals)
 
         if self.activated_test:
-            self.activated_tests[self.activated_test]['mock'] += 1  # add one to the function count
-            method_count = self.activated_tests[self.activated_test]['mock']
-            pickled_results = self.get_method_response(method_count, *args, **kwargs)
+            self.activated_tests[self.activated_test]['method_count'] += 1  # add one to the function count
+            method_count = self.activated_tests[self.activated_test]['method_count']
+            pickled_results = self.get_method_response(method_count)
             if pickled_results:
                 return pickled_results
 
             r = self.method(mock_obj, *args, **kwargs)
-            self.save_method_response(r, method_count, *args, **kwargs)
+            self.save_method_response(r, method_count)
             return r
 
         return self.method(mock_obj, *args, **kwargs)
 
-    def _open_pickle(self, *args, **kwargs) -> Optional[Generator]:
+    def _open_pickle(self) -> Optional[Generator]:
         """ loading multiple objects contained in a list at once has unexpected effects
         where some items in the list do not load correctly.  this will load each pickle.  make sure to
         close this file by iterating through all items even if you have the one you are looking for """
@@ -161,41 +159,34 @@ class MethodMock(object):
         except FileNotFoundError:
             pass
 
-    def get_method_response(self, method_count, *args, **kwargs) -> Union[Any, None]:
+    def get_method_response(self, method_count: int) -> Union[Any, None]:
         """ Get the method's actual response from the pickled file.
 
+        :method_count: identify the count of the method (how many times it has been called)
         :return: the method's actual response or None if FileNotFound
         """
-        data = list(self._open_pickle(*args, **kwargs))  # iterate through everything so the file closes
+        data = list(self._open_pickle())  # iterate through everything so the file closes
         for _ in data:
-            if self._id(method_count, *args, **kwargs) in _:
-                return _[self._id(method_count, *args, **kwargs)]
+            if self._id(method_count) in _:
+                return _[self._id(method_count)]
 
-    def save_method_response(self, _method_response, method_count, *args, **kwargs):
+    def save_method_response(self, _method_response, method_count: int):
         """ Pickle the method's actual response.
 
         :param _method_response: the method's actual response.  Only pickle-able attributes will be pickled.
         :param method_count: identify the count of the method (how many times it has been called)
-        :param args: args to the method being mocked
-        :param kwargs: kwargs to the method being mocked
         :return: None
         """
         _method_response.__getstate__ = types.MethodType(__getstate__, _method_response)
 
         with open(os.path.join(self.directory, self.filename()), 'ab') as f:
-            pickle.dump({self._id(method_count, *args, **kwargs): _method_response}, f)
+            pickle.dump({self._id(method_count): _method_response}, f)
 
-    def _id(self, method_count, *args, **kwargs):
+    def _id(self, method_count: int):
         """ an id that uniquely identifies the called mocked method (test, method, args, kwargs, count)"""
         activated_test = self.activated_test + '.'
         method = self.method.__qualname__ + '.'
-        _args = str(tuple(sorted(args))) + '.'
-        _kwargs = '{'
-        for _ in sorted(kwargs):
-            _kwargs += str(_) + ':' + str(kwargs[_])
-        _kwargs += '}.'
-
-        return activated_test + method + _args + _kwargs + str(method_count)
+        return activated_test + str(method_count)
 
     def filename(self):
         """ a filename that identifies the test and mock method """

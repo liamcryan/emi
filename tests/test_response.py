@@ -12,6 +12,7 @@ MethodMock.directory = os.path.join(os.path.abspath(os.path.dirname(__file__)), 
 
 def get_http_response(*args, **get_kwargs):
     with HTMLSession() as s:
+        s.verify = False
         r = s.get(*args, **get_kwargs)
         if not r.ok:
             raise Exception('unable to get url1: {}'.format(*args))
@@ -21,11 +22,26 @@ def get_http_response(*args, **get_kwargs):
 class TestHTTPResponses(unittest.TestCase):
     url1 = 'https://google.com'
 
+    @staticmethod
+    def clean_up():
+        for file in os.listdir(MethodMock.directory):
+            if file == '.gitkeep':
+                continue
+            os.remove(os.path.join(MethodMock.directory, file))
+
+    @classmethod
+    def setUpClass(cls):
+        cls.clean_up()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.clean_up()
+
     @htmlsession_get.activate
     def test_retrieve_http_pickle(self):
         """ test that the http response you receive is the same as (close to) the pickled response"""
-        http_response1 = get_http_response(self.url1, verify=False)
-        pickled_response1 = htmlsession_get.get_method_response(1, self.url1, verify=False)
+        http_response1 = get_http_response(self.url1)
+        pickled_response1 = htmlsession_get.get_method_response(1)
         for attr in http_response1.__dict__:
             if attr == '__getstate__':
                 continue
@@ -48,10 +64,10 @@ class TestHTTPResponses(unittest.TestCase):
 
         test that multiple calls to the same function/args/kwargs provide separate pickled results.
         """
-        http_response1 = get_http_response(self.url1, verify=False)
-        http_response2 = get_http_response(self.url1, verify=False)
-        pickled_response1 = htmlsession_get.get_method_response(1, self.url1, verify=False)
-        pickled_response2 = htmlsession_get.get_method_response(2, self.url1, verify=False)
+        http_response1 = get_http_response(self.url1)
+        http_response2 = get_http_response(self.url1)
+        pickled_response1 = htmlsession_get.get_method_response(1)
+        pickled_response2 = htmlsession_get.get_method_response(2)
         assert http_response1.elapsed == pickled_response1.elapsed
         assert http_response2.elapsed == pickled_response2.elapsed
 
