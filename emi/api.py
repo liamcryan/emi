@@ -12,11 +12,13 @@ class MaxDepthExceeded(Exception):
     pass
 
 
+class ActiveTestNotFound(Exception):
+    pass
+
+
 def __getstate__(self) -> Dict:
     """ Used by pickle when pickle.dump(s) is called.
-
     Check to see if the attribute is pickle-able.  If not, then essentially disregard it.
-
     :return: a dictionary of pickle-able objects
     """
     state = {}
@@ -42,18 +44,20 @@ class MethodMock(object):
 
     def activate(self, func):
         """ A function that decorates the test.
-
         Activate the mock for the specified test and initialize the counts to zero.
-
         :param func: this is the function being decorated.
         :return the same function.
         """
-        self.activated_tests.update({
-            '{}.{}'.format(func.__module__, func.__qualname__): {'method_count': 0}})
+        activated_test_name = f'{func.__module__}.{func.__qualname__}'
+        self.activated_tests.update({activated_test_name: {'method_count': 0, 'test_complete': False}})
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             r = func(*args, **kwargs)
+            try:
+                self.activated_tests[self.activated_test]['test_complete'] = True
+            except KeyError:  # the method did not get called.  that's ok, let's not raise an error
+                pass
             return r
 
         return wrapper
@@ -61,29 +65,36 @@ class MethodMock(object):
     def _get_active_test(self):
         for stack in inspect.stack():
             for test in self.activated_tests:
-                if test.split('.')[-1] == stack.function:
+                func = test.split('.')[-1]
+                if func == stack.function:
+                    if self.activated_tests[test]['test_complete']:
+                        test_ind = 0
+                        while test in self.activated_tests:
+                            test_ind += 1
+                            if test_ind == 1:
+                                test = f'{test}.{test_ind}'
+                            else:
+                                test = f'{test[:test.rfind(".")]}.{test_ind}'
+                        self.activated_tests.update({test: {'method_count': 0, 'test_complete': False}})
                     return test
+
+        raise ActiveTestNotFound('Could not find the active test by inspecting the stack')
 
     def _find_the_object_in_f_locals_bfs(self, f_locals, max_depth=5):
         """ Find the correct object in f_locals.
-
         The object we want looks like: obj.(self.method.__name__) == self.mock
-
         The structure could be:
             obj.(self.method.__name__)
             c.(self.method.__name__)
             ...
             A.b.c.obj.(self.method.__name__)
-
         Since we don't know the structure of exactly where the obj is called, we do a breadth
         first search to find it.  BFS in this case is what I want, because we don't travel
         down one branch before visiting other branches.  I am thinking that most objects
         will not be heavily nested, but may have some nesting, so max_depth is set to 5.
-
         Also, if the object is nested, it must be contained in 'container.__dict__'.  This means
         only instance attributes wil be found.  Will not find class attributes, however could if the
         below used 'dir(container)' instead.
-
         :param f_locals: f_locals is frame locals.  Or a dict like {'a': a_obj, 'b': b_obj, ...}
         :return: the object
         :raise: MaxDepthExceeded
@@ -121,11 +132,9 @@ class MethodMock(object):
 
     def mock(self, *args, **kwargs) -> Any:
         """  Replace a method with a mock instead.
-
         Behavior is:
             mock will only run if activated with a decorator
             actual method will run if there is no pickle file
-
         :return: the results of the pickle file or result of the actual method
         """
 
@@ -161,7 +170,6 @@ class MethodMock(object):
 
     def get_method_response(self, method_count: int) -> Union[Any, None]:
         """ Get the method's actual response from the pickled file.
-
         :method_count: identify the count of the method (how many times it has been called)
         :return: the method's actual response or None if FileNotFound
         """
@@ -172,7 +180,6 @@ class MethodMock(object):
 
     def save_method_response(self, _method_response, method_count: int):
         """ Pickle the method's actual response.
-
         :param _method_response: the method's actual response.  Only pickle-able attributes will be pickled.
         :param method_count: identify the count of the method (how many times it has been called)
         :return: None
@@ -185,7 +192,6 @@ class MethodMock(object):
     def _id(self, method_count: int):
         """ an id that uniquely identifies the called mocked method (test, method, args, kwargs, count)"""
         activated_test = self.activated_test + '.'
-        method = self.method.__qualname__ + '.'
         return activated_test + str(method_count)
 
     def filename(self):
