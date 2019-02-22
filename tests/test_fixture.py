@@ -7,7 +7,7 @@ from emi.api import MethodMock
 
 htmlsession_get = MethodMock(method=HTMLSession.get)
 HTMLSession.get = htmlsession_get.mock
-MethodMock.directory = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'picklejar')
+MethodMock.directory = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'fixtures')
 
 
 def get_http_response(*args, **get_kwargs):
