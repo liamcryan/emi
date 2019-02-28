@@ -76,15 +76,17 @@ class MethodMock(object):
             for test in self.activated_tests:
                 func = test.split('.')[-1]
                 if func == stack.function:
-                    if self.activated_tests[test]['test_complete']:
-                        test_ind = 0
-                        while test in self.activated_tests:
-                            test_ind += 1
-                            if test_ind == 1:
-                                test = f'{test}.{test_ind}'
-                            else:
-                                test = f'{test[:test.rfind(".")]}.{test_ind}'
-                        self.activated_tests.update({test: {'method_count': 0, 'test_complete': False}})
+                    test_ind = 0
+                    while test in self.activated_tests:
+                        if not self.activated_tests[test]['test_complete']:
+                            return test
+                        test_ind += 1
+                        if test_ind == 1:
+                            test = f'{test}.{test_ind}'
+                        else:
+                            test = f'{test[:test.rfind(".")]}.{test_ind}'
+
+                    self.activated_tests.update({test: {'method_count': 0, 'test_complete': False}})
                     return test
 
         raise ActiveTestNotFound('Could not find the active test by inspecting the stack')
