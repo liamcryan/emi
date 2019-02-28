@@ -42,6 +42,12 @@ class MethodMock(object):
         self.activated_tests = {}
         self.activated_test = None  # this changes each time mock gets called
 
+    def _deactivate(self):
+        try:
+            self.activated_tests[self.activated_test]['test_complete'] = True
+        except KeyError:  # the method did not get called.  that's ok, let's not raise an error
+            pass
+
     def activate(self, func):
         """ A function that decorates the test.
         Activate the mock for the specified test and initialize the counts to zero.
@@ -49,15 +55,20 @@ class MethodMock(object):
         :return the same function.
         """
         activated_test_name = f'{func.__module__}.{func.__qualname__}'
+        try:
+            if self.activated_tests[activated_test_name]['test_complete']:
+                return  # test has already been activated, but will be indexed properly in _get_active_test
+            if self.activated_tests[activated_test_name]['method_count'] > 0:
+                self.activated_tests[activated_test_name]['test_complete'] = True
+                return  # automatically deactivate test in this case, then return like above
+        except KeyError:
+            pass
         self.activated_tests.update({activated_test_name: {'method_count': 0, 'test_complete': False}})
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             r = func(*args, **kwargs)
-            try:
-                self.activated_tests[self.activated_test]['test_complete'] = True
-            except KeyError:  # the method did not get called.  that's ok, let's not raise an error
-                pass
+            self._deactivate()
             return r
 
         return wrapper
