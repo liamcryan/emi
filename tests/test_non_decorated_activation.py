@@ -7,7 +7,7 @@ from emi.api import MethodMock
 
 htmlsession_get = MethodMock(method=HTMLSession.get)
 HTMLSession.get = htmlsession_get.mock
-MethodMock.directory = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'fixtures')
+MethodMock.directory = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'picklejar')
 
 
 def get_http_response(*args, **get_kwargs):
@@ -22,11 +22,13 @@ def get_http_response(*args, **get_kwargs):
 def set_up(url):
     htmlsession_get.activate(set_up)
     get_http_response(url)
+    get_http_response(url)
     htmlsession_get.deactivate()
 
 
 def go_1(url):
     htmlsession_get.activate(go_1)
+    get_http_response(url)
     get_http_response(url)
     htmlsession_get.deactivate()
 
@@ -34,11 +36,13 @@ def go_1(url):
 def go_2(url):
     htmlsession_get.activate(go_2)
     get_http_response(url)
+    get_http_response(url)
     htmlsession_get.deactivate()
 
 
 def go_3(url):
     htmlsession_get.activate(go_3)
+    get_http_response(url)
     get_http_response(url)
     htmlsession_get.deactivate()
 
