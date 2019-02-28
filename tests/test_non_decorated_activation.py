@@ -22,21 +22,25 @@ def get_http_response(*args, **get_kwargs):
 def set_up(url):
     htmlsession_get.activate(set_up)
     get_http_response(url)
+    htmlsession_get.deactivate()
 
 
 def go_1(url):
     htmlsession_get.activate(go_1)
     get_http_response(url)
+    htmlsession_get.deactivate()
 
 
 def go_2(url):
     htmlsession_get.activate(go_2)
     get_http_response(url)
+    htmlsession_get.deactivate()
 
 
 def go_3(url):
     htmlsession_get.activate(go_3)
     get_http_response(url)
+    htmlsession_get.deactivate()
 
 
 class TestFixture(unittest.TestCase):
@@ -78,3 +82,4 @@ class TestFixture(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
