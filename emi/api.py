@@ -42,7 +42,8 @@ class MethodMock(object):
         self.activated_tests = {}
         self.activated_test = None  # this changes each time mock gets called
 
-    def _deactivate(self):
+    def deactivate(self):
+        """ must manually deactivate tests (for now) """
         try:
             self.activated_tests[self.activated_test]['test_complete'] = True
         except KeyError:  # the method did not get called.  that's ok, let's not raise an error
@@ -68,7 +69,7 @@ class MethodMock(object):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             r = func(*args, **kwargs)
-            self._deactivate()
+            self.deactivate()
             return r
 
         return wrapper
@@ -209,3 +210,4 @@ class MethodMock(object):
         """ a filename that identifies the test and mock method """
         f_name = '{}-{}.pickle'.format(self.activated_test, self.method.__qualname__)
         return f_name
+
