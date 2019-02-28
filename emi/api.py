@@ -55,7 +55,8 @@ class MethodMock(object):
         :param func: this is the function being decorated.
         :return the same function.
         """
-        activated_test_name = f'{func.__module__}.{func.__qualname__}'
+        module_no_package = func.__module__.split('.')[-1]
+        activated_test_name = f'{module_no_package}.{func.__qualname__}'
         try:
             if self.activated_tests[activated_test_name]['test_complete']:
                 return  # test has already been activated, but will be indexed properly in _get_active_test
@@ -207,5 +208,7 @@ class MethodMock(object):
 
     def filename(self):
         """ a filename that identifies the test and mock method """
+
         f_name = '{}-{}.pickle'.format(self.activated_test, self.method.__qualname__)
         return f_name
+
