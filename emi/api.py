@@ -59,9 +59,6 @@ class MethodMock(object):
         try:
             if self.activated_tests[activated_test_name]['test_complete']:
                 return  # test has already been activated, but will be indexed properly in _get_active_test
-            if self.activated_tests[activated_test_name]['method_count'] > 0:
-                self.activated_tests[activated_test_name]['test_complete'] = True
-                return  # automatically deactivate test in this case, then return like above
         except KeyError:
             pass
         self.activated_tests.update({activated_test_name: {'method_count': 0, 'test_complete': False}})
@@ -210,4 +207,3 @@ class MethodMock(object):
         """ a filename that identifies the test and mock method """
         f_name = '{}-{}.pickle'.format(self.activated_test, self.method.__qualname__)
         return f_name
-
